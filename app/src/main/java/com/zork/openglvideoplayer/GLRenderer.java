@@ -1,9 +1,11 @@
 package com.zork.openglvideoplayer;
 
 import android.content.Context;
+import android.graphics.ColorMatrix;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.effect.EffectFactory;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
@@ -22,7 +24,7 @@ import javax.microedition.khronos.opengles.GL10;
  * Created by Administrator on 2017/2/2.
  */
 
-public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrameAvailableListener,MediaPlayer.OnVideoSizeChangedListener,MediaPlayer.OnErrorListener {
+public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrameAvailableListener,MediaPlayer.OnVideoSizeChangedListener {
     public enum Status {
         IDLE, PREPARED, PLAYING, PAUSED, STOPPED, COMPLETE, ERROR
     }
@@ -85,7 +87,8 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         textureVertexBuffer.position(0);
 
         mediaPlayer = new MediaPlayer();
-        mediaPlayer.setOnErrorListener(this);
+        mediaPlayer.setOnErrorListener(new MediaPlayerErrorEvent());
+        mediaPlayer.setOnCompletionListener(new MediaPlayerCompletionEvent());
         mediaPlayer = MediaPlayer.create(context, R.raw.viedo1);
         status = Status.PREPARED;
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -123,6 +126,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
+        Log.d(TAG, "onSurfaceChanged: " + width + " " + height);
         screenWidth = width;
         screenHeight = height;
         float ratio = width > height ?
@@ -133,6 +137,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         } else {
             Matrix.orthoM(projectionMatrix, 0, -1f, 1f, -ratio, ratio, -1f, 1f);
         }
+        updateProjection(mediaPlayer.getVideoWidth(),mediaPlayer.getVideoHeight(),width, height);
     }
 
     @Override
@@ -162,7 +167,6 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         GLES20.glUniform1i(uTextureSamplerHandle, 0);
         GLES20.glViewport(0, 0, screenWidth, screenHeight);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-
     }
 
     @Override
@@ -173,7 +177,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
     @Override
     public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
         Log.d(TAG, "onVideoSizeChanged: " + width + " " + height);
-        updateProjection(width, height);
+        //updateProjection(width, height);
     }
 
     private void updateProjection(int videoWidth, int videoHeight) {
@@ -186,25 +190,37 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         }
     }
 
-    public MediaPlayer getMediaPlayer() {
-        return mediaPlayer;
+    private void updateProjection(int videoWidth, int videoHeight, int screenWidth, int screenHeight) {
+        float screenRatio = (float) screenWidth / screenHeight;
+        float videoRatio = (float) videoWidth / videoHeight;
+        if (videoRatio > screenRatio) {
+            Matrix.orthoM(projectionMatrix, 0, -1f, 1f, -videoRatio / screenRatio, videoRatio / screenRatio, -1f, 1f);
+        } else {
+            Matrix.orthoM(projectionMatrix, 0, -screenRatio / videoRatio, screenRatio / videoRatio, -1f, 1f, -1f, 1f);
+        }
     }
-
 
     public int getCurrentPosition() {
         return mediaPlayer.getCurrentPosition();
     }
 
     public int getDuration() {
-        return mediaPlayer.getDuration();
+        if(status != null && status != Status.IDLE) {
+            return mediaPlayer.getDuration();
+        } else {
+            return 0;
+        }
     }
-
 
     public void play() {
         if (status == Status.PREPARED || status == Status.PAUSED ) {
             mediaPlayer.start();
             status = Status.PLAYING;
         }
+    }
+
+    public void seekTo(int msec){
+        mediaPlayer.seekTo(msec);
     }
 
     public void pause() {
@@ -226,9 +242,24 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         }
     }
 
-    @Override
-    public boolean onError(MediaPlayer mp, int what, int extra) {
-        status = Status.ERROR;
-        return false;
+    public Status getStatus(){
+        return status;
+    }
+
+    class MediaPlayerCompletionEvent implements MediaPlayer.OnCompletionListener{
+        @Override
+        public void onCompletion(MediaPlayer mp) {
+            if(!mp.isLooping()) {
+                status = Status.COMPLETE;
+            }
+        }
+    }
+
+    class MediaPlayerErrorEvent implements MediaPlayer.OnErrorListener {
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) {
+            status = Status.ERROR;
+            return false;
+        }
     }
 }

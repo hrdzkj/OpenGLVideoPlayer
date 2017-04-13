@@ -5,11 +5,9 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.SeekBar;
 
 public class MainActivity extends Activity implements GLSurfaceView.OnTouchListener,View.OnClickListener {
@@ -19,6 +17,8 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
     private SeekBar seekBar;
     private Button controlButton;
     private Handler handler;
+    private boolean alreadyTimeRemark = true;
+    private DelayThread timeRemarkThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +37,16 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
-                seekBar.setProgress(100 * glRenderer.getCurrentPosition() / glRenderer.getDuration());
+                if (msg.what == 0) {
+                    int progress = glRenderer.getDuration();
+                    if (progress != 0) {
+                        seekBar.setProgress(100 * glRenderer.getCurrentPosition() / glRenderer.getDuration());
+                    }
+                } else if(msg.what == 1){
+                    controlButton.setVisibility(View.GONE);
+                    seekBar.setVisibility(View.GONE);
+                    alreadyTimeRemark = false;
+                }
             }
         };
     }
@@ -60,10 +69,18 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         super.onResume();
         glSurfaceView.onResume();
         controlButton.setText(R.string.play);
+        controlButton.setVisibility(View.VISIBLE);
+        seekBar.setVisibility(View.VISIBLE);
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
+        controlButton.setVisibility(View.VISIBLE);
+        seekBar.setVisibility(View.VISIBLE);
+        if(!alreadyTimeRemark) {
+            alreadyTimeRemark = true;
+            hideWidgetDelay();
+        }
         return false;
     }
 
@@ -74,8 +91,9 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
                 Button btn = (Button) v;
                 if(btn.getText().equals(getResources().getString(R.string.play))) {
                     glRenderer.play();
-                    DelayThread delayThread = new DelayThread(100);
+                    DelayThread delayThread = new DelayThread(100,0);
                     delayThread.start();
+                    hideWidgetDelay();
                     btn.setText(R.string.pause);
                 } else {
                     glRenderer.pause();
@@ -90,38 +108,51 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
             if(fromUser) {
-                glRenderer.getMediaPlayer().seekTo(glRenderer.getDuration() * progress / 100);
+                glRenderer.seekTo(glRenderer.getDuration() * progress / 100);
             }
         }
 
         @Override
         public void onStartTrackingTouch(SeekBar seekBar) {
-
+            alreadyTimeRemark = true;
+            timeRemarkThread.interrupt();
         }
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
-
+            alreadyTimeRemark = false;
+            hideWidgetDelay();
         }
     }
 
-    class DelayThread extends Thread{
+    class DelayThread extends Thread {
         int milliseconds;
+        int what;
 
-        public DelayThread(int milliseconds) {
+        public DelayThread(int milliseconds,int what) {
             this.milliseconds = milliseconds;
+            this.what = what;
         }
 
         @Override
         public void run() {
-            while (true){
+            while (true) {
                 try {
                     sleep(milliseconds);
-                } catch (InterruptedException ex){
+                } catch (InterruptedException ex) {
                     ex.printStackTrace();
+                    if(what == 1)
+                        break;
                 }
-                handler.sendEmptyMessage(0);
+                handler.sendEmptyMessage(what);
+                if(what == 1)
+                    break;
             }
         }
+    }
+
+    private void hideWidgetDelay(){
+        timeRemarkThread = new DelayThread(3000,1);
+        timeRemarkThread.start();
     }
 }
