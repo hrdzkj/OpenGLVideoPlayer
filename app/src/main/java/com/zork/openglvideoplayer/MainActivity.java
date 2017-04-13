@@ -16,6 +16,7 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
     private GLRenderer glRenderer;
     private SeekBar seekBar;
     private Button controlButton;
+    private Button switchButton;
     private Handler handler;
     private boolean alreadyTimeRemark = true;
     private DelayThread timeRemarkThread;
@@ -26,6 +27,8 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         setContentView(R.layout.activity_main);
         controlButton = (Button) findViewById(R.id.btn_control);
         controlButton.setOnClickListener(this);
+        switchButton = (Button) findViewById(R.id.btn_switch);
+        switchButton.setOnClickListener(this);
         seekBar = (SeekBar) findViewById(R.id.seekBar);
         seekBar.setOnSeekBarChangeListener(new SeekBarChangeEvent());
         glSurfaceView = (GLSurfaceView) findViewById(R.id.surface_view);
@@ -44,6 +47,7 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
                     }
                 } else if(msg.what == 1){
                     controlButton.setVisibility(View.GONE);
+                    switchButton.setVisibility(View.GONE);
                     seekBar.setVisibility(View.GONE);
                     alreadyTimeRemark = false;
                 }
@@ -60,6 +64,8 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
     @Override
     protected void onPause(){
         super.onPause();
+        if(timeRemarkThread != null)
+            timeRemarkThread.interrupt();
         glSurfaceView.onPause();
         glRenderer.pause();
     }
@@ -68,14 +74,18 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
     protected void onResume(){
         super.onResume();
         glSurfaceView.onResume();
+        glRenderer.seekTo(glRenderer.getCurrentPosition()+1);
         controlButton.setText(R.string.play);
         controlButton.setVisibility(View.VISIBLE);
+        switchButton.setVisibility(View.VISIBLE);
         seekBar.setVisibility(View.VISIBLE);
+        alreadyTimeRemark = true;
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         controlButton.setVisibility(View.VISIBLE);
+        switchButton.setVisibility(View.VISIBLE);
         seekBar.setVisibility(View.VISIBLE);
         if(!alreadyTimeRemark) {
             alreadyTimeRemark = true;
@@ -83,6 +93,7 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         }
         return false;
     }
+
 
     @Override
     public void onClick(View v) {
@@ -99,7 +110,19 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
                     glRenderer.pause();
                     btn.setText(R.string.play);
                 }
-            } break;
+                break;
+            }
+            case R.id.btn_switch:{
+                Button btn = (Button) v;
+                if(btn.getText().equals(getResources().getString(R.string.mirror))) {
+                    glRenderer.setFragmentShaderId(1);
+                    btn.setText(R.string.normal);
+                } else {
+                    glRenderer.setFragmentShaderId(0);
+                    btn.setText(R.string.mirror);
+                }
+                break;
+            }
             default:
         }
     }
@@ -115,7 +138,8 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
         @Override
         public void onStartTrackingTouch(SeekBar seekBar) {
             alreadyTimeRemark = true;
-            timeRemarkThread.interrupt();
+            if(timeRemarkThread != null)
+                timeRemarkThread.interrupt();
         }
 
         @Override

@@ -2,4 +2,6 @@
     <string name="app_name">OpenGLVideoPlayer</string>
     <string name="play">play</string>
     <string name="pause">pause</string>
+    <string name="normal">normal</string>
+    <string name="mirror">mirror</string>
 </resources>

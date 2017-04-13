@@ -1,11 +1,9 @@
 package com.zork.openglvideoplayer;
 
 import android.content.Context;
-import android.graphics.ColorMatrix;
 import android.graphics.SurfaceTexture;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.effect.EffectFactory;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
@@ -29,6 +27,12 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         IDLE, PREPARED, PLAYING, PAUSED, STOPPED, COMPLETE, ERROR
     }
 
+    private int fragmentShaderId = 0;
+
+    public void setFragmentShaderId(int fragmentShaderId) {
+        this.fragmentShaderId = fragmentShaderId;
+    }
+
     private static final String TAG = "GLRenderer";
 
     private Context context;
@@ -38,6 +42,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
     private int textureId;
     private int uTextureSamplerHandle;
     private int aTextureCoordHandle;
+    private int uChooseShaderHandle;
     private int uSTMMatrixHandle;
     private FloatBuffer vertexBuffer;
     private FloatBuffer textureVertexBuffer;
@@ -106,6 +111,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         aPositionHandle = GLES20.glGetAttribLocation(programId, "aPosition");
         aTextureCoordHandle = GLES20.glGetAttribLocation(programId, "aTexCoord");
         uSTMMatrixHandle = GLES20.glGetUniformLocation(programId, "uSTMatrix");
+        uChooseShaderHandle = GLES20.glGetUniformLocation(programId,"uChoose");
 
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
@@ -151,6 +157,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
             }
         }
         GLES20.glUseProgram(programId);
+        GLES20.glUniform1i(uChooseShaderHandle,fragmentShaderId);
         GLES20.glUniformMatrix4fv(uMatrixHandle, 1, false, projectionMatrix, 0);
         GLES20.glUniformMatrix4fv(uSTMMatrixHandle, 1, false, mSTMatrix, 0);
         vertexBuffer.position(0);
