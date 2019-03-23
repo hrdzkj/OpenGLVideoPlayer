@@ -113,6 +113,7 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         uSTMMatrixHandle = GLES20.glGetUniformLocation(programId, "uSTMatrix");
         uChooseShaderHandle = GLES20.glGetUniformLocation(programId,"uChoose");
 
+        //onSurfaceCreated的时候，opengsl创建texture，封装一个surfaceTexture给display
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
 
@@ -149,15 +150,16 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
-        synchronized (this) {
+        //synchronized (this) {
             if (updateSurface) {
                 surfaceTexture.updateTexImage();
                 surfaceTexture.getTransformMatrix(mSTMatrix);
                 updateSurface = false;
             }
-        }
+        //}
+
         GLES20.glUseProgram(programId);
-        GLES20.glUniform1i(uChooseShaderHandle,fragmentShaderId);
+        GLES20.glUniform1i(uChooseShaderHandle,fragmentShaderId);//
         GLES20.glUniformMatrix4fv(uMatrixHandle, 1, false, projectionMatrix, 0);
         GLES20.glUniformMatrix4fv(uSTMMatrixHandle, 1, false, mSTMatrix, 0);
         vertexBuffer.position(0);
@@ -177,8 +179,10 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
     }
 
     @Override
+    //synchronized public void onFrameAvailable(SurfaceTexture surface) {
     synchronized public void onFrameAvailable(SurfaceTexture surface) {
         updateSurface = true;
+        //surfaceTexture.updateTexImage();
     }
 
     @Override
@@ -187,15 +191,6 @@ public class GLRenderer implements GLSurfaceView.Renderer,SurfaceTexture.OnFrame
         //updateProjection(width, height);
     }
 
-    private void updateProjection(int videoWidth, int videoHeight) {
-        float screenRatio = (float) screenWidth / screenHeight;
-        float videoRatio = (float) videoWidth / videoHeight;
-        if (videoRatio > screenRatio) {
-            Matrix.orthoM(projectionMatrix, 0, -1f, 1f, -videoRatio / screenRatio, videoRatio / screenRatio, -1f, 1f);
-        } else {
-            Matrix.orthoM(projectionMatrix, 0, -screenRatio / videoRatio, screenRatio / videoRatio, -1f, 1f, -1f, 1f);
-        }
-    }
 
     private void updateProjection(int videoWidth, int videoHeight, int screenWidth, int screenHeight) {
         float screenRatio = (float) screenWidth / screenHeight;
