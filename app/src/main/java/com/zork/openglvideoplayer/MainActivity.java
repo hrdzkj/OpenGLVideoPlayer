@@ -1,5 +1,6 @@
 package com.zork.openglvideoplayer;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -21,6 +22,7 @@ public class MainActivity extends Activity implements GLSurfaceView.OnTouchListe
     private boolean alreadyTimeRemark = true;
     private DelayThread timeRemarkThread;
 
+    @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
